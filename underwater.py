@@ -12,7 +12,7 @@ class GameSprite(sprite.Sprite):
         super().__init__()
         self.icon = transform.scale(image.load(player_icon), (width,height))
         self.speed = player_speed
-        self.rect = self.icon.get_rect
+        self.rect = self.icon.get_rect()
         self.rect.x = x_co
         self.rect.y = y_co
 
@@ -22,14 +22,14 @@ class GameSprite(sprite.Sprite):
 class Player(GameSprite):
     def upd(self):
         keys = key.get_pressed()
-        if keys[K_w] or keys[K_UP] and self.rect.y < 900:
-            self.rect.y += self.speed
-        if keys[K_s] or keys[K_DOWN] and self.rect.y > 0:
+        if keys[K_w] or keys[K_UP] and self.rect.y > 0:
             self.rect.y -= self.speed
+        if keys[K_s] or keys[K_DOWN] and self.rect.y < 700:
+            self.rect.y += self.speed
         if keys[K_a] or keys[K_LEFT] and self.rect.x > 0:
-            self.rect.x -= self.speed
-        if keys[K_d] or keys[K_RIGHT] and self.rect.x < 700:
             self.rect.x += self.speed
+        if keys[K_d] or keys[K_RIGHT] and self.rect.x < 900:
+            self.rect.x -= self.speed
 
 class Obstacle(GameSprite):
     def move_y(self):
@@ -65,7 +65,7 @@ class Obstacle(GameSprite):
 obs1 = Obstacle("obs1.png",randint(1,900),randint(1,700),5,25,25) 
 obs2 = Obstacle("obs2.png",randint(1,900), randint(1,700),10,10,20)
 obs3 = Obstacle("obs3.png",randint(1,900),randint(1,700),15,10,10)
-fish = Player("fish.png",450,200,20,5,5)
+fish = Player("fish.png",450,200,20,100,100)
 
 game = True
 finish = False
@@ -87,3 +87,6 @@ while game:
         obs1.decide()
         obs2.decide()
         obs3.decide()
+
+    display.update()
+    clock.tick(FPS)
