@@ -89,14 +89,15 @@ while game:
 
     if finish != True:
         window.blit(background,(0,0))
-        #obstacles1.draw(window)
-        #obstacles2.draw(window)
-        #obstacles3.draw(window)
+        for i in range(180):
+            obs1.reset()
+        """obstacles2.Group.decide()
+        obstacles3.Group.decide()
+        obstacles1.draw(window)
+        obstacles2.draw(window)
+        obstacles3.draw(window)"""
         fish.reset()
         fish.upd()
-        #obstacles1.decide()
-        #obstacles2.decide()
-        #obstacles3.decide()
 
     display.update()
     clock.tick(FPS)
