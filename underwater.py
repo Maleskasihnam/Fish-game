@@ -33,27 +33,39 @@ class Player(GameSprite):
 
 class Obstacle(GameSprite):
     def move_y(self):
-        if self.rect.y <= 900:
+        self.rect.y = 700
+        if self.rect.y <= 700:
             self.rect.y -= self.speed
         if self.rect.y <= 0:
             self.kill()
 
     def move_xright(self):
+        self.rect.x = 0
         if self.rect.x >= 0:
             self.rect.x += self.speed
         if self.rect.x >= 700:
             self.kill()
     
     def move_xleft(self):
-        if self.rect.x <= 700:
+        self.rect.x = 900
+        if self.rect.x <= 900:
             self.rect.x -= self.speed
         if self.rect.x <= 0:
             self.kill()
 
-obs1 = Obstacle()
-obs2 = Obstacle()
-obs3 = Obstacle()
-fish = Player()
+    def decide(self):
+        decision = randint(1,3)
+        if decision == 1:
+            self.move_y()
+        elif decision == 2:
+            self.move_xright()
+        elif decision == 3:
+            self.move_xleft()
+
+obs1 = Obstacle("obs1.png",randint(1,900),randint(1,700),5,25,25) 
+obs2 = Obstacle("obs2.png",randint(1,900), randint(1,700),10,10,20)
+obs3 = Obstacle("obs3.png",randint(1,900),randint(1,700),15,10,10)
+fish = Player("fish.png",450,200,20,5,5)
 
 game = True
 finish = False
@@ -67,3 +79,11 @@ while game:
 
     if finish != True:
         window.fill(back)
+        obs1.reset()
+        obs2.reset()
+        obs3.reset()
+        fish.reset()
+        fish.upd()
+        obs1.decide()
+        obs2.decide()
+        obs3.decide()
