@@ -1,22 +1,30 @@
+from math import *
 from pygame import *
 from random import *
+
+init()
 
 back = (30, 185, 227)
 win_width = 900
 win_height = 700
-window = display.set_mode((win_width,win_height))
+window = display.set_mode((win_width, win_height))
+
 
 class GameSprite(sprite.Sprite):
-    def __init__(self,player_icon,x_co,y_co,player_speed,width,height):
+    def __init__(self, player_image, x_co, y_co, player_speed, width, height):
         super().__init__()
-        self.icon = transform.scale(image.load(player_icon), (width,height))
+        self.image = transform.scale(image.load(player_image), (width, height))
         self.speed = player_speed
-        self.rect = self.icon.get_rect()
+        self.rect = self.image.get_rect()
+        self.hitbox = self.rect.inflate(-int(width * 0.6), -int(height * 0.6))
         self.rect.x = x_co
         self.rect.y = y_co
 
+    def update_hitbox(self):
+        self.hitbox.center = self.rect.center
+
     def reset(self):
-        window.blit(self.icon, (self.rect.x,self.rect.y))
+        window.blit(self.image, (self.rect.x, self.rect.y))
 
 class Player(GameSprite):
     def upd(self):
@@ -30,74 +38,100 @@ class Player(GameSprite):
         if (keys[K_d] or keys[K_RIGHT]) and self.rect.x < 800:
             self.rect.x += self.speed
 
+
 class Obstacle(GameSprite):
-    def move_y(self):
-        self.rect.y = 700
-        if self.rect.y <= 700:
-            self.rect.y -= self.speed
-        if self.rect.y <= 0:
+    def __init__(self, player_image, speed, width, height):
+        origin = randint(1, 3)
+
+        if origin == 1:  # FROM TOP
+            angle = randint(30, 150)
+            x = randint(0, win_width - width)
+            y = -height
+
+        elif origin == 2:  # FROM RIGHT
+            angle = randint(150, 180)
+            x = win_width - 10
+            y = randint(0, win_height - height)
+
+        else:  # FROM LEFT
+            angle = randint(0, 30)
+            x = -width
+            y = randint(0, win_height - height)
+
+        rad = radians(angle)
+        super().__init__(player_image, x, y, speed, width, height)
+
+        # FLOAT position (THIS IS THE KEY)
+        self.fx = float(self.rect.x)
+        self.fy = float(self.rect.y)
+
+        self.vx = speed * cos(rad)
+        self.vy = speed * sin(rad)
+
+    def update(self):
+        self.fx += self.vx
+        self.fy += self.vy
+
+        self.rect.x = int(self.fx)
+        self.rect.y = int(self.fy)
+
+        if (self.rect.top > win_height or self.rect.right < 0
+            or self.rect.left > win_width or self.rect.bottom < 0):
             self.kill()
 
-    def move_xright(self):
-        self.rect.x = 0
-        if self.rect.x >= 0:
-            self.rect.x += self.speed
-        if self.rect.x >= 700:
-            self.kill()
-    
-    def move_xleft(self):
-        self.rect.x = 900
-        if self.rect.x <= 900:
-            self.rect.x -= self.speed
-        if self.rect.x <= 0:
-            self.kill()
-
-    def decide(self):
-        decision = randint(1,3)
-        if decision == 1:
-            self.move_y()
-        elif decision == 2:
-            self.move_xright()
-        elif decision == 3:
-            self.move_xleft()
-
-background = transform.scale(image.load("bg.jpg"),(win_width,win_height))
-obstacles1 = sprite.Group()
-obstacles2 = sprite.Group()
-obstacles3 = sprite.Group()
-for i in range(180):
-    obs1 = Obstacle("obs1.png",randint(1,900),randint(1,700),3,25,25)
-    obstacles1.add(obs1)
-for j in range(300):
-    obs2 = Obstacle("obs2.png",randint(1,900), randint(1,700),5,10,20)
-    obstacles2.add(obs2)
-for k in range(420):
-    obs3 = Obstacle("obs3.png",randint(1,900),randint(1,700),7,10,10)
-    obstacles3.add(obs3)
-
-fish = Player("fish.png",450,200,5,50,50)
-
+background = transform.scale(image.load("bg.jpg"), (win_width, win_height))
+bullets = sprite.Group()
+turtle = Player("turtle.png", 450, 200, 5, 50, 50)
+START_TIME = time.get_ticks()
+SPAWN_INTERVAL = 1000  # 1 second
+last_spawn_time = START_TIME
+GAME_DURATION = 60000  # 60 seconds
 game = True
-finish = False
 clock = time.Clock()
 FPS = 60
+spawn_timer = 0
+spawn_delay = 30
 
 while game:
+    current_time = time.get_ticks()
+
     for e in event.get():
         if e.type == QUIT:
             game = False
 
-    if finish != True:
-        window.blit(background,(0,0))
-        for i in range(180):
-            obs1.reset()
-        """obstacles2.Group.decide()
-        obstacles3.Group.decide()
-        obstacles1.draw(window)
-        obstacles2.draw(window)
-        obstacles3.draw(window)"""
-        fish.reset()
-        fish.upd()
+    window.blit(background, (0, 0))
+
+    # ---- SPAWNING LOGIC ----
+    if current_time - START_TIME < GAME_DURATION:
+        if current_time - last_spawn_time >= SPAWN_INTERVAL:
+            last_spawn_time = current_time
+
+            # 3 obs1
+            for _ in range(3):
+                bullets.add(Obstacle("obs1.png", 1, 100, 100))
+
+            # 5 obs2
+            for _ in range(5):
+                bullets.add(Obstacle("obs2.png", 3, 50, 100))
+
+            # 7 obs3
+            for _ in range(7):
+                bullets.add(Obstacle("obs3.png", 4, 45, 45))
+
+    if current_time >= GAME_DURATION:
+        game = False
+
+    # ---- UPDATE & DRAW ----
+    turtle.upd()
+    turtle.update_hitbox()
+    bullets.update()
+    for o in bullets:
+        o.update_hitbox()
+        if turtle.hitbox.colliderect(o.hitbox):
+            game = False
+
+    bullets.draw(window)
+    turtle.reset()
 
     display.update()
     clock.tick(FPS)
