@@ -1,10 +1,22 @@
 from math import *
 from pygame import *
 from random import *
+from collections import deque
 
 init()
+font.init()
+IMAGES = {
+    "obs1.png": transform.scale(image.load("obs1.png"), (85, 100)),
+    "obs2.png": transform.scale(image.load("obs2.png"), (125, 125)),
+    "obs3.png": transform.scale(image.load("obs3.png"), (70, 80)),
+    "turtle.png": transform.scale(image.load("turtle.png"), (50, 50)),
+}
 
-back = (30, 185, 227)
+font_title = font.Font(None, 288)
+font_explanation = font.Font(None,144)
+font_subtitle = font.Font(None,108)
+font_system = font.Font(None, 72)
+
 win_width = 900
 win_height = 700
 window = display.set_mode((win_width, win_height))
@@ -13,20 +25,26 @@ window = display.set_mode((win_width, win_height))
 class GameSprite(sprite.Sprite):
     def __init__(self, player_image, x_co, y_co, player_speed, width, height):
         super().__init__()
-        self.image = transform.scale(image.load(player_image), (width, height))
+        self.image = IMAGES[player_image]
         self.speed = player_speed
         self.rect = self.image.get_rect()
-        self.hitbox = self.rect.inflate(-int(width * 0.6), -int(height * 0.6))
         self.rect.x = x_co
         self.rect.y = y_co
-
-    def update_hitbox(self):
-        self.hitbox.center = self.rect.center
 
     def reset(self):
         window.blit(self.image, (self.rect.x, self.rect.y))
 
 class Player(GameSprite):
+    def __init__(self,*args):
+        super().__init__(*args)
+
+        HITBOX_RADIUS = 2.5
+        self.hitbox = Rect(0, 0, HITBOX_RADIUS * 2, HITBOX_RADIUS * 2)
+        self.update_hitbox()
+
+    def update_hitbox(self):
+        self.hitbox.center = self.rect.center
+
     def upd(self):
         keys = key.get_pressed()
         if (keys[K_w] or keys[K_UP]) and self.rect.y > 50:
@@ -81,7 +99,7 @@ class Obstacle(GameSprite):
 
 background = transform.scale(image.load("bg.jpg"), (win_width, win_height))
 bullets = sprite.Group()
-turtle = Player("turtle.png", 450, 200, 5, 50, 50)
+turtle = Player("turtle.png", 450, 200, 2, 50, 50)
 START_TIME = time.get_ticks()
 SPAWN_INTERVAL = 1000  # 1 second
 last_spawn_time = START_TIME
@@ -91,14 +109,13 @@ clock = time.Clock()
 FPS = 60
 spawn_timer = 0
 spawn_delay = 30
+spawn_queue = deque()
 
 while game:
-    current_time = time.get_ticks()
-
     for e in event.get():
         if e.type == QUIT:
             game = False
-
+    current_time = time.get_ticks()
     window.blit(background, (0, 0))
 
     # ---- SPAWNING LOGIC ----
@@ -106,19 +123,14 @@ while game:
         if current_time - last_spawn_time >= SPAWN_INTERVAL:
             last_spawn_time = current_time
 
-            # 3 obs1
-            for _ in range(3):
-                bullets.add(Obstacle("obs1.png", 1, 100, 100))
+            spawn_queue += [("obs1.png", 1, 85, 100)] * 1
+            spawn_queue += [("obs2.png", 0.75, 125, 125)] * 1
+            spawn_queue += [("obs3.png", 1.5, 70, 80)] * 1
 
-            # 5 obs2
-            for _ in range(5):
-                bullets.add(Obstacle("obs2.png", 3, 50, 100))
-
-            # 7 obs3
-            for _ in range(7):
-                bullets.add(Obstacle("obs3.png", 4, 45, 45))
-
-    if current_time >= GAME_DURATION:
+        if spawn_queue:
+            img, speed, w, h = spawn_queue.popleft()
+            bullets.add(Obstacle(img, speed, w, h))
+    if current_time - START_TIME >= GAME_DURATION:
         game = False
 
     # ---- UPDATE & DRAW ----
@@ -126,12 +138,28 @@ while game:
     turtle.update_hitbox()
     bullets.update()
     for o in bullets:
-        o.update_hitbox()
-        if turtle.hitbox.colliderect(o.hitbox):
+        if turtle.hitbox.colliderect(o.rect):
             game = False
 
     bullets.draw(window)
     turtle.reset()
+    time_left = max(0, (GAME_DURATION - (current_time - START_TIME)) // 1000)
+    if time_left > 10:
+        if time_left > 30:
+            timer_text = font_system.render(f"Time Left: {time_left}s", True, (0, 255, 0))
+            window.blit(timer_text, (550, 20))
+        else:
+            timer_text = font_system.render(f"Time Left: {time_left}s", True, (255, 255, 0))
+            window.blit(timer_text, (550, 20))
+    else:
+        timer_text = font_title.render(f"{time_left}", True, (255,0,0))
+        timer_text.set_alpha(128)
+        timer_rect = timer_text.get_rect(center=(win_width // 2, win_height // 2))
+        overlay = Surface((win_width, win_height))
+        overlay.set_alpha(100)
+        overlay.fill((0, 0, 0))
+        window.blit(overlay, (0, 0))
+        window.blit(timer_text, timer_rect)
 
     display.update()
     clock.tick(FPS)
